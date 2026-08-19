@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets (nunca commitar segredos reais)
+.env
+*.env
+!.env.example
+*.pem
+*.key
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Build / artifacts
+dist/
+build/
+*.sbom.json
+*.tar
+*.tgz
+
+# Security tool outputs (mantemos exemplos versionados manualmente em security/reports)
+*.sarif
+!security/reports/*.sarif
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
