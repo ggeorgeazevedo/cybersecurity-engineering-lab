@@ -4,8 +4,9 @@
 > Design → Implement → Automate → Secure → Attack → Detect → Troubleshoot → Improve
 > Regra mestra: **80% hands-on / 20% teoria**. Cloud-agnostic first. Custo zero.
 
-**Status:** aguardando sua confirmação antes do Dia 1.
+**Status:** confirmado — stack Node/Express, GitHub real, Azure só conceitual. Início: Dia 1.
 **Data de referência da pesquisa:** 19/ago/2026.
+**Objetivo de carreira:** vaga de **Application Security Engineer em banco** (setor financeiro regulado — BACEN/LGPD/PCI-DSS; ferramentas típicas: Fortify, Azure DevOps).
 
 ---
 
@@ -14,6 +15,29 @@
 Este documento é o **plano de voo**. Ele não começa o Dia 1 — ele define o que vamos construir, com quais ferramentas, contra qual modelo de ameaça, e como validamos aprendizado. Cada seção foi triangulada seguindo sua matriz de pesquisa (OWASP → Docs oficiais → GitHub → Blog/Medium → Incidente real → Framework). As decisões de ferramenta trazem justificativa e **limitações**, não só o "use X".
 
 Tudo aqui é portável: Markdown puro, sem dependência de plataforma. No fim você terá um repositório `cybersecurity-engineering-lab` apresentável em GitHub, Notion, Pages ou PDF.
+
+---
+
+## 0.1 Priorização para a vaga de AppSec Engineer em banco
+
+O bootcamp cobre 12 domínios, mas eles **não têm o mesmo peso** para o seu alvo (sair de *reviewer* → *AppSec Engineer* em banco). Ordem de criticidade e onde cada um é trabalhado:
+
+**🔴 Prioridade máxima — é o coração da vaga:**
+
+1. **AppSec** — OWASP Top 10 Web **+ API**; achar **e corrigir** SQLi/SSRF/authz na prática, não só apontar. *(Dias 1–2)*
+2. **DevSecOps / CI-CD Engineering** — integrar SAST/SCA/DAST/secret scanning como **security gates** que não travam o time. É literalmente o trabalho do dia 1 no emprego. *(Dias 1–2, 5)*
+3. **Threat Modeling** — STRIDE, trust boundaries, abuse cases. Cai em entrevista de banco. *(Dias 6–7)*
+
+**🟠 Alta prioridade — seu diferencial vs. outros candidatos:**
+
+4. **Supply Chain Security** — virou **A03 do OWASP Top 10:2025**. Poucos reviewers sabem *implementar* SBOM + assinatura + provenance. *(Dia 3)*
+5. **IAM / OIDC** — "por que credencial long-lived é ruim" é pergunta clássica. *(Dia 5)*
+
+**🟡 Suporte — importa, mas não é onde se ganha a vaga de AppSec:**
+
+6. Container Security → 7. IaC Security → 8. Cloud Security → depois Kubernetes, Observability, Incident Response, Automation. *(Dias 3–4, 6–7)*
+
+**Consequência no cronograma:** os **Dias 1, 2, 3 e 6** recebem mais peso e tempo (app + gates + supply chain + ataque). A entrevista simulada do Dia 7 usa perguntas **estilo banco**: secure SDLC, security champions, tuning de SAST/Fortify, gate sem fricção, LGPD/PCI no pipeline.
 
 ---
 
@@ -31,13 +55,16 @@ GitHub + GitHub Actions  →  Azure DevOps (mapeamento)   Docker + Kind + Terraf
 
 ### 1.2 Aplicação-alvo
 
-**Stack escolhida: Python + FastAPI + SQLite (e Postgres via docker-compose).**
+**Stack escolhida: Node.js + Express + SQLite (e Postgres via docker-compose).**
 
 Justificativa:
 
-- FastAPI é enxuto, tem auth simples (OAuth2/JWT), e gera erros de segurança realistas (SQLi, SSRF, path traversal) sem boilerplate.
-- Ecossistema Python cobre todas as ferramentas do bootcamp de graça (Semgrep, Bandit, pip-audit, OSV-Scanner, Trivy).
-- SQLite para rodar local sem infra; Postgres opcional via compose para exercícios de secret/connection.
+- Express é enxuto, tem auth simples (JWT/express-session), e gera erros de segurança realistas (SQLi, SSRF, path traversal, command injection) sem boilerplate.
+- Ecossistema Node cobre todas as ferramentas do bootcamp de graça (Semgrep, `npm audit`, OSV-Scanner, Trivy, Gitleaks).
+- SQLite (`better-sqlite3`) para rodar local sem infra; Postgres opcional via compose para exercícios de secret/connection.
+- Testes com **Jest + Supertest** (unit + regressão de segurança).
+
+> Nota de mentor: bancos ainda têm muito Java/Spring no core (e o Fortify brilha em Java). Os conceitos de AppSec são idênticos entre stacks — usamos Node por familiaridade e velocidade de lab; um *post-bootcamp* opcional replica os mesmos vetores em Java.
 
 A app terá, propositalmente, **um par seguro e um inseguro** de cada coisa:
 
@@ -46,7 +73,7 @@ A app terá, propositalmente, **um par seguro e um inseguro** de cada coisa:
 | Query de banco    | string concatenada → **SQL Injection**         | parametrização / ORM                    |
 | Fetch de URL      | request sem validação → **SSRF**               | allowlist + bloqueio de IPs internos    |
 | Leitura de arquivo| join de path do usuário → **Path Traversal**   | canonicalização + jail                  |
-| Exec de comando   | `os.system(user_input)` → **Command Injection**| `subprocess` sem shell + validação      |
+| Exec de comando   | `child_process.exec(user_input)` → **Command Injection** | `execFile` sem shell + validação |
 | Segredo           | API key **hardcoded**                          | env var / secret manager                |
 | Auth              | senha fraca / sem rate-limit                   | hashing forte + lockout                 |
 | Dependência       | pacote com CVE conhecido                        | versão corrigida                        |
@@ -57,12 +84,12 @@ A app terá, propositalmente, **um par seguro e um inseguro** de cada coisa:
 
 ```
 cybersecurity-engineering-lab/
-├── app/                      # FastAPI: endpoints seguros e vulneráveis
-│   ├── main.py
-│   ├── auth.py
-│   ├── db.py
+├── app/                      # Express: endpoints seguros e vulneráveis
+│   ├── server.js
+│   ├── auth.js
+│   ├── db.js
 │   └── vulnerable/           # rotas intencionalmente inseguras (isoladas)
-├── tests/                    # pytest (unit + security regression)
+├── tests/                    # Jest + Supertest (unit + security regression)
 ├── Dockerfile                # multi-stage, non-root, distroless/slim
 ├── docker-compose.yml
 ├── terraform/                # IaC insegura → hardened (S3/IAM/network)
@@ -113,9 +140,9 @@ Regra: você **não** aceita minha escolha automaticamente. Cada dia começa com
 - **CodeQL:** análise semântica profunda (taint tracking real), grátis para repos públicos via GitHub code scanning. Fraqueza: mais lento, curva de aprendizado da linguagem QL, e o uso self-hosted em repo privado tem restrições de licença.
 - **Veredito do lab:** Semgrep no gate rápido de PR; CodeQL como *default setup* de code scanning para comparar achados. Você vai ver na prática por que SAST tem falso-positivo e falso-negativo.
 
-### SCA / Dependency — **OSV-Scanner** + **pip-audit** (e Trivy como all-in-one)
+### SCA / Dependency — **OSV-Scanner** + **npm audit** (e Trivy como all-in-one)
 
-- **OSV-Scanner** (Google/OpenSSF): usa a base OSV, cobre múltiplos ecossistemas, ótimo sinal de proveniência. **Trivy** cobre SCA + container + IaC + secrets num binário só — excelente para reduzir superfície de ferramentas.
+- **OSV-Scanner** (Google/OpenSSF): usa a base OSV, cobre múltiplos ecossistemas, ótimo sinal de proveniência. **`npm audit`** é o baseline nativo do Node. **Trivy** cobre SCA + container + IaC + secrets num binário só — excelente para reduzir superfície de ferramentas.
 - Limitação: SCA acha *vulnerabilidade conhecida*, não backdoor novo (ver incidente Shai-Hulud). Por isso combinamos com SBOM + attestation.
 
 ### Secrets — **Gitleaks** (gate) + **TruffleHog** (validação)
@@ -203,7 +230,7 @@ Cada seta é uma fronteira onde dados/código cruzam níveis de confiança — �
 Cada dia segue: **Explain → Implement → Break → Investigate → Attack → Detect → Fix → Validate**, terminando com **Reading List** (Must/Should/Deep Dive/Labs/Incidents/Optional).
 
 ### DIA 1 — Engineering Foundation
-Construir a app FastAPI + testes, repo Git, primeiro workflow (jobs, steps, runners, artifacts, cache, vars, env, exit codes, logs). Publicar artifact. **Desafio "Pipeline failed"** com troubleshooting guiado (Hypothesis → Evidence → Command → Log → Diagnosis → Fix → Validation).
+Construir a app Express + testes, repo Git, primeiro workflow (jobs, steps, runners, artifacts, cache, vars, env, exit codes, logs). Publicar artifact. **Desafio "Pipeline failed"** com troubleshooting guiado (Hypothesis → Evidence → Command → Log → Diagnosis → Fix → Validation).
 
 ### DIA 2 — DevSecOps Pipeline (shift-left)
 Integrar SAST (Semgrep), SCA (OSV-Scanner/Trivy), secrets (Gitleaks + TruffleHog), license check. Você justifica cada ferramenta e desenha **security gates** que bloqueiam sem travar o dev (warn vs fail, baseline, `continue-on-error` consciente).
@@ -310,7 +337,7 @@ Mais **entrevista técnica simulada** (Cybersecurity/DevSecOps Engineer): eu ava
 
 **Obrigatório (grátis):**
 - Conta GitHub (repo público para usar code scanning/attestations grátis).
-- Git, Docker, Python 3.11+, Terraform, `gh` CLI.
+- Git, Docker, Node.js 20+ (LTS), Terraform, `gh` CLI.
 - Kind (Kubernetes local).
 
 **Instalados durante o lab (grátis/OSS):**
@@ -382,14 +409,14 @@ eBPF · Kubernetes admission controllers avançados · OPA/Gatekeeper em profund
 
 ---
 
-## 14. Decisões que preciso confirmar com você antes do Dia 1
+## 14. Decisões (confirmadas)
 
-1. **Stack:** confirma **Python + FastAPI**? (alternativa: Node/Express se preferir).
-2. **Onde escrevo o código:** entrego os arquivos aqui na sessão, ou você conecta uma pasta do MacBook (via "Add folder") para eu escrever direto?
-3. **GitHub real:** você vai criar o repo `cybersecurity-engineering-lab` na sua conta e rodar os workflows lá? (necessário para OIDC/attestations reais).
-4. **Azure DevOps:** mantemos só como **mapeamento conceitual** (recomendado) ou você tem ambiente corporativo autorizado para replicar?
-5. **Profundidade:** algum dos 12 domínios de avaliação que você quer priorizar (ex.: supply chain e IAM costumam ser os de maior gap para quem vem de AppSec/reviewer)?
+1. **Stack:** ✅ **Node.js + Express**.
+2. **Modelo de trabalho:** ✅ **você escreve o código na sua máquina; eu leio, reviso e guio** (mentoria real). Pasta local conectada ao Claude para code review dos seus commits.
+3. **GitHub real:** ✅ repo público [`ggeorgeazevedo/cybersecurity-engineering-lab`](https://github.com/ggeorgeazevedo/cybersecurity-engineering-lab) — workflows, OIDC e attestations reais.
+4. **Azure DevOps:** ✅ apenas **mapeamento conceitual** (tabelas GitHub ↔ Azure em cada dia). Sem ambiente corporativo.
+5. **Prioridade:** ✅ foco em **AppSec Engineer de banco** — ver a **Seção 0.1**. Peso maior nos Dias 1, 2, 3 e 6.
 
 ---
 
-**Próximo passo:** me confirme os 5 pontos acima (ou diga "pode seguir com os defaults") e eu inicio o **Dia 1 — Engineering Foundation**.
+**Próximo passo:** dizer **"bora Dia 1"** e eu inicio o **Dia 1 — Engineering Foundation**.
