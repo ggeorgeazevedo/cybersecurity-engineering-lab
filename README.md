@@ -4,6 +4,7 @@
 > Objetivo: sair de **Security Reviewer** para **Cybersecurity Engineer** — capaz de **projetar, implementar, automatizar, proteger, atacar, detectar, troubleshootar e explicar** uma cadeia completa de software delivery.
 
 **Regra mestra:** 80% hands-on / 20% teoria · Cloud-agnostic first · Custo zero (open source / free tier / local).
+**Foco de carreira:** Application Security Engineer (setor financeiro) — prioridade em AppSec, DevSecOps gates, Supply Chain e Threat Modeling.
 
 ---
 
@@ -47,8 +48,8 @@ Developer → PR ──► [Branch protection + CODEOWNERS + required checks]
 ## 📂 Estrutura do repositório
 
 ```
-├── app/            # FastAPI: endpoints seguros e vulneráveis (isolados)
-├── tests/          # pytest (unit + security regression)
+├── app/            # Express: endpoints seguros e vulneráveis (isolados)
+├── tests/          # Jest + Supertest (unit + security regression)
 ├── terraform/      # IaC insegura → hardened
 ├── kubernetes/     # manifests inseguros → hardened + policies
 ├── .github/workflows/  # CI/CD + security pipelines
@@ -62,9 +63,9 @@ Developer → PR ──► [Branch protection + CODEOWNERS + required checks]
 
 | Domínio        | Ferramentas                                            |
 | -------------- | ------------------------------------------------------ |
-| App            | Python · FastAPI · SQLite/Postgres                     |
+| App            | Node.js · Express · SQLite/Postgres                    |
 | SAST           | Semgrep · CodeQL                                       |
-| SCA / deps     | OSV-Scanner · Trivy · pip-audit                        |
+| SCA / deps     | OSV-Scanner · Trivy · npm audit                        |
 | Secrets        | Gitleaks · TruffleHog                                  |
 | IaC            | Trivy · Checkov · Conftest/OPA                         |
 | Container/SBOM | Trivy · Syft · Grype                                   |
