@@ -11,7 +11,7 @@ app.get('/health', (req, res) => {
 // ✅ SEGURO — query parametrizada
 app.get('/users/secure', (req, res) => {
   const { username } = req.query;
-  const row = db.prepare('SELECT id, username, email FROM users WHERE username = ?').get(username);
+  const row = db.prepare(`SELECT id, username, email FROM users WHERE username = '${username}'`).get();
   res.json(row || {});
 });
 
